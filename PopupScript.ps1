@@ -2,18 +2,25 @@
 [System.Windows.Forms.Application]::EnableVisualStyles()
 
 # Locations
-$LogLocation = $env:LogLocation
+$LogLocation = ""
+$AUPPDFLocation = (Join-Path $LogLocation "\CannonAUP.pdf")
+$PDFSaveLocation = (Join-Path $LogLocation "\CompletedPDFs")
 $IconLocation = (Join-Path $LogLocation "\icon.ico")
 $LogFile = (Join-Path $LogLocation "\PopupLog.csv")
+$LocalAUPLocation = "C:\Users\$($UserName)\Documents\CannonAUP.pdf"
 
 $UserName = $env:USERNAME
 $Width = [System.Windows.Forms.SystemInformation]::PrimaryMonitorSize.Width
 $Height = [System.Windows.Forms.SystemInformation]::PrimaryMonitorSize.Height
 
-# Check if user already accepted agreement and don't show form
-# if (Select-String -Path $LogFile -Pattern $UserName -Quiet) {
+# Check if user has PDF with their EDIPI in PDF save location
+# Don't include the .A or .C since most people won't include that in their PDF title
+# if (Get-ChildItem -Path $PDFSaveLocation | Out-String | Select-String -Pattern $UserName.Substring(0, 10)) {
 #     exit
 # }
+
+#Copies file to documents so people aren't changing the version on the ShareDrive
+Copy-Item $AUPPDFLocation -Destination "C:\Users\$($UserName)\Documents"
 
 # Creates logfile if it doesn't exists and adds headers
 if (-not(Test-Path -Path $LogFile -PathType Leaf)) {
@@ -130,11 +137,26 @@ $AUPInfo.Text = "The following statements reflect mandatory behavioral norms and
 $AUPInfo.Multiline = $True;
 $AUPInfo.Font = New-Object System.Drawing.Font('Microsoft Sans Serif', 14)
 $AUPInfo.WordWrap = $True
-$AUPInfo.Location = New-Object System.Drawing.Size(($Width * 0.05), ($Height * 0.05))
-$AUPInfo.Size = New-Object System.Drawing.Size(($Width * 0.9), ($Height * 0.8))
+$AUPInfo.Location = New-Object System.Drawing.Size(($Width * 0.05), ($Height * 0.25))
+$AUPInfo.Size = New-Object System.Drawing.Size(($Width * 0.9), ($Height * 0.6))
 $AUPInfo.Scrollbars = "Vertical"
 
-$AUPForm.controls.AddRange(@($AcceptButton, $CancelButton, $AUPInfo))
+$AUPHeader = New-Object System.Windows.Forms.Label
+$AUPHeader.Text = 
+"You must sign and send this PDF to email@email.com to prevent this popup from showing in the future.
+To close this form, click accept below"
+$AUPHeader.Font = New-Object System.Drawing.Font('Microsoft Sans Serif', 20)
+$AUPHeader.Location = New-Object System.Drawing.Size(($Width * 0.05), ($Height * 0.05))
+$AUPHeader.Size = New-Object System.Drawing.Size(($Width * 0.9), ($Height * 0.05 + 5))
+
+$PDFLink = New-Object System.Windows.Forms.LinkLabel
+$PDFLink.Text = "Click here to open Cannon Rules of Behavior and Acceptable Use PDF"
+$PDFLink.Font = New-Object System.Drawing.Font('Microsoft Sans Serif', 20)
+$PDFLink.Location = New-Object System.Drawing.Size(($Width * 0.05), ($Height * 0.15))
+$PDFLink.Size = New-Object System.Drawing.Size(($Width * 0.9), ($Height * 0.2))
+$PDFLink.add_Click({ [system.Diagnostics.Process]::start($LocalAUPLocation) })
+
+$AUPForm.controls.AddRange(@($AcceptButton, $CancelButton, $AUPInfo, $AUPHeader, $PDFLink))
 
 # Run
 [void]$AUPForm.ShowDialog()
